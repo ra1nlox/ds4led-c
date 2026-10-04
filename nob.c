@@ -12,6 +12,7 @@ int main(int argc, char **argv) {
   nob_cmd_append(&cmd, "cc");
   nob_cmd_append(&cmd, "-Wall", "-Wextra");
   nob_cmd_append(&cmd, "-ggdb");
+  nob_cmd_append(&cmd, "-lm");
   nob_cmd_append(&cmd, "main.c");
   nob_cmd_append(&cmd, "-o" BUILD_FOLDER"ds4led");
 
