@@ -1,0 +1,15 @@
+[
+  {
+    "file": "main.c",
+    "arguments": [
+      "cc",
+      "-Wall",
+      "-Wextra",
+      "-D_POSIX_C_SOURCE=200809L",
+      "main.c",
+      "-obuild/ds4led"
+    ],
+    "directory": "/home/artemis/stuff/coding/c/ds4led",
+    "output": "build/ds4led"
+  }
+]
