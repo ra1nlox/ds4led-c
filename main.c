@@ -259,6 +259,7 @@ int* hex_to_dec(char* hex) {
 
 int main(int argc, char **argv) {
   char* device = get_device_name();
+  // TODO: create config if it doesn't exist
   char* config = read_config_file();
   Dict serial = serialize_config_file(config);
   
