@@ -12,6 +12,129 @@
 
 #define BUFFER_SIZE 64
 
+#define CONFIG_PATH "/.config/ds4led/ds4led.json"
+
+typedef struct {
+  char* key;
+  char* value;
+} Pair;
+
+typedef struct {
+  char** items;
+  size_t count;
+  size_t capacity;
+} String_List;
+
+typedef struct {
+  int* items;
+  size_t count;
+  size_t capacity;
+} Int_List;
+
+typedef struct {
+  Pair* items;
+  size_t count;
+  size_t capacity;
+} Dict;
+
+Dict serialize_config_file(char* config_file_content) {
+  Dict dict = {0};
+
+  Int_List positions = {0};
+  String_List keys = {0};
+  String_List values = {0};
+
+  for (size_t i = 0; i < strlen(config_file_content); ++i) {
+    char tok = config_file_content[i];
+
+    switch (tok) {
+      case '\"':
+        da_append(&positions, i);
+        break;
+      default:
+        break;
+      }
+  }
+
+  if (positions.count % 2 != 0) {
+    nob_log(NOB_ERROR, "Wrong config format. Not valid JSON");
+    return dict;
+  }
+
+  for (size_t i = 0; i < positions.count; i+=4) {
+    String_Builder str = {0};
+    for (size_t s = positions.items[i]+1; s < (size_t) positions.items[i+1]; ++s) {
+      da_append(&str, config_file_content[s]);
+    }
+    da_append(&str, '\0');
+    da_append(&keys, str.items);
+  }
+
+  for (size_t i = 2; i < positions.count; i+=4) {
+    String_Builder str = {0};
+    for (size_t s = positions.items[i]+2; s < (size_t) positions.items[i+1]; ++s) {
+      da_append(&str, config_file_content[s]);
+    }
+    da_append(&str, '\0');
+    da_append(&values, str.items);
+  }
+
+  for (size_t i = 0; i < keys.count; ++i) {
+    Pair pair = {keys.items[i], values.items[i]};
+    da_append(&dict, pair);
+  }
+  
+
+  return dict;
+}
+
+char* read_config_file() {
+    char* home_dir = getenv("HOME");
+  
+  if (home_dir == NULL) {
+    nob_log(NOB_ERROR, "Error getting user's home dir");
+    return NULL;
+  }
+
+  char path[PATH_MAX];
+  snprintf(path, sizeof(path), "%s%s", home_dir, CONFIG_PATH);
+
+  FILE *fptr = fopen(path, "rb");
+  
+  if (fptr == NULL) {
+    nob_log(NOB_ERROR, "Error opening file");
+    return NULL;
+  }
+  fseek(fptr, 0, SEEK_END);
+  long file_size = ftell(fptr);
+  rewind(fptr);
+
+  char *config_file_content = malloc(file_size + 1);
+
+  if (config_file_content == NULL) {
+      fclose(fptr);
+      return NULL;
+  }
+
+  size_t bytes_read = fread(
+      config_file_content,
+      1,
+      file_size,
+      fptr
+  );
+
+  fclose(fptr);
+
+  if (bytes_read != (size_t)file_size) {
+      free(config_file_content);
+      return NULL;
+  }
+
+  config_file_content[bytes_read] = '\0';
+
+  return config_file_content;
+}
+
 char* get_device_name() {
   char* buffer = malloc(BUFFER_SIZE);
 
@@ -136,6 +259,8 @@ int* hex_to_dec(char* hex) {
 
 int main(int argc, char **argv) {
   char* device = get_device_name();
+  char* config = read_config_file();
+  Dict serial = serialize_config_file(config);
   
   if (device == NULL) {
     nob_log(NOB_ERROR, "The gamepad is not connected");
@@ -168,10 +293,28 @@ int main(int argc, char **argv) {
 
   switch (argc) {
     case 1:
+      if (strcmp(argv[0], "-l") == 0) {
+        for (size_t i = 0; i < serial.count; ++i) {
+          printf("%s: %s\n", serial.items[i].key, serial.items[i].value);
+        }
+        break;
+      }
       int* color_values = hex_to_dec(argv[0]);
       write_colors_in(led_paths, color_values);
       free(color_values);
       color_values = NULL;
+      break;
+    case 2:
+      if (strcmp(argv[0], "-l") == 0) {
+        for (size_t i = 0; i < serial.count; ++i) {
+          if (strcmp(serial.items[i].key, argv[1]) == 0) {
+            int* color_values = hex_to_dec(serial.items[i].value);
+            write_colors_in(led_paths, color_values);
+            free(color_values);
+            color_values = NULL;
+          }
+        }
+      }
       break;
     case 3:
       int colors[3] = {atoi(argv[0]), atoi(argv[1]), atoi(argv[2])};
@@ -182,7 +325,10 @@ int main(int argc, char **argv) {
       return 1;
   }
 
+  da_free(serial);
+  free(config);
   free(device);
+  config = NULL;
   device = NULL;
   return 0;
 }
