@@ -15,24 +15,24 @@
 #define CONFIG_PATH "/.config/ds4led/ds4led.json"
 
 typedef struct {
-  char* key;
-  char* value;
+  char *key;
+  char *value;
 } Pair;
 
 typedef struct {
-  char** items;
+  char **items;
   size_t count;
   size_t capacity;
 } String_List;
 
 typedef struct {
-  int* items;
+  int *items;
   size_t count;
   size_t capacity;
 } Int_List;
 
 typedef struct {
-  Pair* items;
+  Pair *items;
   size_t count;
   size_t capacity;
 } Dict;
@@ -88,8 +88,8 @@ Dict serialize_config_file(char* config_file_content) {
   return dict;
 }
 
-char* read_config_file() {
-    char* home_dir = getenv("HOME");
+bool check_config_file_existance() {
+  char *home_dir = getenv("HOME");
   
   if (home_dir == NULL) {
     nob_log(NOB_ERROR, "Error getting user's home dir");
@@ -102,9 +102,52 @@ char* read_config_file() {
   FILE *fptr = fopen(path, "rb");
   
   if (fptr == NULL) {
-    nob_log(NOB_ERROR, "Error opening file");
+    return false;
+  } else {
+    fclose(fptr);
+    return true;
+  }
+}
+
+int create_config_file() {
+  char *home_dir = getenv("HOME");
+  
+  if (home_dir == NULL) {
+    nob_log(NOB_ERROR, "Error getting user's home dir");
+    return 1;
+  }
+
+  char path[PATH_MAX];
+  snprintf(path, sizeof(path), "%s%s", home_dir, CONFIG_PATH);
+
+  FILE *fptr = fopen(path, "w");
+
+  if (fptr == NULL) {
+    nob_log(NOB_ERROR, "Error creating config file");
+  }
+
+  const char *default_config_content = "{\n    \"default\":\"#000040\",\n}";
+
+  fprintf(fptr, "%s", default_config_content);
+
+  nob_log(NOB_INFO, "Created config file");
+  fclose(fptr);
+  return 0;
+}
+
+char *read_config_file() {
+  char *home_dir = getenv("HOME");
+  
+  if (home_dir == NULL) {
+    nob_log(NOB_ERROR, "Error getting user's home dir");
     return NULL;
   }
+
+  char path[PATH_MAX];
+  snprintf(path, sizeof(path), "%s%s", home_dir, CONFIG_PATH);
+
+  FILE *fptr = fopen(path, "rb");
+
   fseek(fptr, 0, SEEK_END);
   long file_size = ftell(fptr);
   rewind(fptr);
@@ -135,8 +178,8 @@ char* read_config_file() {
   return config_file_content;
 }
 
-char* get_device_name() {
-  char* buffer = malloc(BUFFER_SIZE);
+char *get_device_name() {
+  char *buffer = malloc(BUFFER_SIZE);
 
   if (buffer == NULL) {
     return NULL;
@@ -186,7 +229,7 @@ void write_colors_in(char *paths[3], int colors[3]) {
   return;
 }
 
-int* hex_to_dec(char* hex) {
+int *hex_to_dec(char* hex) {
   if (strlen(hex) != 6) {
     nob_log(NOB_ERROR, "Wrong hex number (e.g 000040)");
     return NULL;
@@ -258,9 +301,18 @@ int* hex_to_dec(char* hex) {
 
 
 int main(int argc, char **argv) {
-  char* device = get_device_name();
-  // TODO: create config if it doesn't exist
-  char* config = read_config_file();
+  char *device = get_device_name();
+  
+  if (!check_config_file_existance()) {
+    create_config_file();
+    return 0;
+  }
+  char *config = read_config_file();
+
+  if (config == NULL) {
+    return 0;
+  }
+
   Dict serial = serialize_config_file(config);
   
   if (device == NULL) {
@@ -288,10 +340,6 @@ int main(int argc, char **argv) {
   // shift args to remove unnecessary filename as first argument
   nob_shift(argv, argc);
 
-  // for (int i = 0; i < argc; ++i) {
-  //   printf("argc: %d | argv: %s\n", i, argv[i]);
-  // }
-
   switch (argc) {
     case 1:
       if (strcmp(argv[0], "-l") == 0) {
@@ -300,7 +348,7 @@ int main(int argc, char **argv) {
         }
         break;
       }
-      int* color_values = hex_to_dec(argv[0]);
+      int *color_values = hex_to_dec(argv[0]);
       write_colors_in(led_paths, color_values);
       free(color_values);
       color_values = NULL;
@@ -309,7 +357,7 @@ int main(int argc, char **argv) {
       if (strcmp(argv[0], "-l") == 0) {
         for (size_t i = 0; i < serial.count; ++i) {
           if (strcmp(serial.items[i].key, argv[1]) == 0) {
-            int* color_values = hex_to_dec(serial.items[i].value);
+            int *color_values = hex_to_dec(serial.items[i].value);
             write_colors_in(led_paths, color_values);
             free(color_values);
             color_values = NULL;
