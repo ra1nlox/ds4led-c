@@ -301,8 +301,9 @@ int *hex_to_dec(char* hex) {
 
 
 int main(int argc, char **argv) {
-  char *device = get_device_name();
-  
+  // shift args to remove unnecessary filename as first argument
+  nob_shift(argv, argc);
+
   if (!check_config_file_existance()) {
     create_config_file();
     return 0;
@@ -314,6 +315,17 @@ int main(int argc, char **argv) {
   }
 
   Dict serial = serialize_config_file(config);
+  
+  if (argc == 1) {
+    if (strcmp(argv[0], "-l") == 0) {
+      for (size_t i = 0; i < serial.count; ++i) {
+        printf("%-10s: %s\n", serial.items[i].key, serial.items[i].value);
+      }
+    }
+    return 0;
+  }
+  
+  char *device = get_device_name();
   
   if (device == NULL) {
     nob_log(NOB_ERROR, "The gamepad is not connected");
@@ -337,21 +349,14 @@ int main(int argc, char **argv) {
 
   char* led_paths[] = {red_path_fmt, green_path_fmt, blue_path_fmt};
 
-  // shift args to remove unnecessary filename as first argument
-  nob_shift(argv, argc);
-
   switch (argc) {
     case 1:
-      if (strcmp(argv[0], "-l") == 0) {
-        for (size_t i = 0; i < serial.count; ++i) {
-          printf("%s: %s\n", serial.items[i].key, serial.items[i].value);
-        }
-        break;
+      if (strcmp(argv[0], "-l") != 0) {
+        int *color_values = hex_to_dec(argv[0]);
+        write_colors_in(led_paths, color_values);
+        free(color_values);
+        color_values = NULL;
       }
-      int *color_values = hex_to_dec(argv[0]);
-      write_colors_in(led_paths, color_values);
-      free(color_values);
-      color_values = NULL;
       break;
     case 2:
       if (strcmp(argv[0], "-l") == 0) {
