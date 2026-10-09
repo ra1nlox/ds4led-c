@@ -362,7 +362,7 @@ int main(int argc, char **argv) {
       }
       break;
     case 2:
-      if (strcmp(argv[0], "-l") == 0) {
+      if (strcmp(argv[0], "-p") == 0) {
         for (size_t i = 0; i < serial.count; ++i) {
           if (strcmp(serial.items[i].key, argv[1]) == 0) {
             int *color_values = hex_to_dec(serial.items[i].value);
