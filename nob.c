@@ -13,6 +13,8 @@ int main(int argc, char **argv) {
   nob_cmd_append(&cmd, "-Wall", "-Wextra");
   nob_cmd_append(&cmd, "-ggdb");
   nob_cmd_append(&cmd, "-lm");
+  // for some reason -O3 breaks everything
+  // nob_cmd_append(&cmd, "-O3");
   nob_cmd_append(&cmd, "main.c");
   nob_cmd_append(&cmd, "-o" BUILD_FOLDER"ds4led");
 
