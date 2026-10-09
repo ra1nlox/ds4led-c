@@ -322,6 +322,9 @@ int main(int argc, char **argv) {
         printf("%-10s: %s\n", serial.items[i].key, serial.items[i].value);
       }
     }
+      da_free(serial);
+    free(config);
+    config = NULL;
     return 0;
   }
   
